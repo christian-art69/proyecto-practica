@@ -96,7 +96,7 @@ def send_email_reminder(to_email, subject, body):
         return False
 
 
-# --- LÓGICA PRINCIPAL: Decisión por Fecha (casi sin cambios) ---
+# --- LÓGICA PRINCIPAL: Decisión por Fecha (CON CAMBIOS EN ASUNTO Y CUERPO) ---
 
 def main_reminder_logic():
     """Itera sobre la lista de alumnos CREADA DESDE EXCEL y genera recordatorios."""
@@ -132,9 +132,10 @@ def main_reminder_logic():
             # Lógica de urgencia (HOY o TARDE)
             estado = None
             if fecha_vencimiento == hoy:
-                estado = "HOY" 
+                estado = "**¡VENCE HOY!**"  # Más enfático
             elif fecha_vencimiento < hoy:
-                estado = f"TARDE (Venció el {tarea['vencimiento']})"
+                # Modificado para ser más asertivo
+                estado = f"**VENCIDA** (Fecha límite: {tarea['vencimiento']})"
             
             if estado:
                 tareas_para_recordar.append((tarea['nombre'], estado))
@@ -142,18 +143,28 @@ def main_reminder_logic():
         if tareas_para_recordar:
             print(f"--> {nombre}: ¡Tiene {len(tareas_para_recordar)} tarea(s) pendientes/vencidas!")
             
+            # --- MODIFICACIÓN DEL CUERPO DEL CORREO ---
             lista_tareas_str = "\n".join([f"- {t[0]} ({t[1]})" for t in tareas_para_recordar])
 
-            subject = f"🚨 Tarea(s) Pendiente(s) o Tarde"
+            # ASUNTO MODIFICADO: Directo y urgente.
+            subject = f"⚠️ ¡Cuidado con la Fecha Límite! Tarea(s) Pendiente(s) o Vencida(s)"
 
+            # CUERPO DEL CORREO MODIFICADO: Enfocado en no pasarse de la fecha.
             email_body = f"""
             <html><body>
                 <p>Estimado(a) **{nombre}**:</p>
-                <p>Hemos notado que tienes una o más tareas pendientes. **Si ya la entregaste, ignora este mensaje.**</p>
-                <p>Detalle de las tareas:</p>
+                <p>Este es un **AVISO URGENTE** para asegurar que no te pases de la fecha límite o para informarte que ya ha pasado. **La entrega de tu trabajo final es crítica para la aprobación del curso.**</p>
+                <p>Asegúrate de enviar las siguientes tareas **INMEDIATAMENTE**: </p>
                 <pre>{lista_tareas_str}</pre>
-                <p>Por favor, ponte al día con las entregas para completar el curso.</p>
-                <p>Saludos cordiales,<br>El equipo de {EMAIL_USER.split('@')[1]}</p>
+                
+                <p>
+                    **Si la tarea vence hoy**, no pospongas la entrega para evitar penalizaciones. 
+                    **Si la tarea ya está vencida**, por favor contáctanos lo antes posible para ver cómo puedes regularizar tu situación.
+                </p>
+                
+                <p>**Si ya realizaste la entrega, por favor, ignora este mensaje.**</p>
+                
+                <p>Saludos y mucho éxito,<br>El equipo de {EMAIL_USER.split('@')[1]}</p>
             </body></html>
             """
             
