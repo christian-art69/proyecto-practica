@@ -1,0 +1,34 @@
+🛠️ Instrucciones para Crear y Usar el Archivo
+El jefe de la empresa solo necesita seguir estos pasos para mantener la lista actualizada:
+
+Paso 1: Crear el Archivo
+Abre un programa de hoja de cálculo (como Microsoft Excel, Google Sheets o LibreOffice Calc).
+
+Crea una nueva hoja y escribe los tres encabezados de columna exactamente como se muestran a continuación, en la primera fila (A1, B1, C1):
+
+A1: nombre
+
+B1: email
+
+C1: vencimiento
+
+Ingresa los datos de cada alumno en las filas siguientes.
+
+Paso 2: Formato de Fecha (¡CRUCIAL!)
+El campo vencimiento es el más importante. Debe seguir el formato estricto que el script espera:
+
+Año-Mes-Día
+
+Ejemplo: Para el 15 de diciembre de 2025, debe escribir: 2025-12-15
+
+Si usa solo 15/12/2025 o 12/15/2025, el script fallará y enviará una alerta al administrador.
+
+Paso 3: Guardar el Archivo
+Ve a "Archivo" -> "Guardar como..." o "Descargar".
+
+Nombra el archivo exactamente alumnos_tareas.xlsx.
+
+Asegúrate de guardarlo o descargarlo en el formato .xlsx o .csv.
+
+Paso 4: Actualización
+Una vez que el archivo esté listo y con el formato correcto, el jefe solo tiene que subir este archivo a la raíz del repositorio (o a la carpeta donde se ejecuta el script) cada vez que quiera agregar, modificar o eliminar alumnos.
