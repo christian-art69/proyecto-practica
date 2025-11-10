@@ -1,59 +1,88 @@
 import os
 import smtplib
-import pandas as pd # Necesario para leer Excel
+import pandas as pd
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 
+# ----------------------------------------------------------------------
 # --- CONFIGURACIÓN DE ENVÍO Y VARIABLES DE ENTORNO ---
-# (Sin cambios)
+# ----------------------------------------------------------------------
+
 SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
 SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
 EMAIL_USER = os.getenv('EMAIL_USER')
 EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
-# --- FIN CONFIGURACIÓN ---
+
+# --- CONFIGURACIÓN PARA REPORTES DE ERRORES ---
+ADMIN_EMAIL = os.getenv('ADMIN_EMAIL') 
+# ----------------------------------------------------------------------
 
 # Nombre del archivo de Excel
 EXCEL_FILE_PATH = 'alumnos_tareas.xlsx' 
 
 
+# ----------------------------------------------------------------------
+# --- FUNCIÓN DE ALERTA DE ADMINISTRADOR ---
+# ----------------------------------------------------------------------
+
+def send_admin_alert(subject, body):
+    """Envía una notificación simple al administrador sobre un error crítico."""
+    if not ADMIN_EMAIL or not EMAIL_USER or not EMAIL_PASSWORD:
+        print(f"ALERTA ADMINISTRATIVA FALLIDA: ADMIN_EMAIL o credenciales no configuradas.")
+        return
+        
+    try:
+        msg = MIMEText(body, 'text')
+        msg['Subject'] = f"[ALERTA CRÍTICA] {subject}"
+        msg['From'] = EMAIL_USER 
+        msg['To'] = ADMIN_EMAIL
+
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls() 
+            server.login(EMAIL_USER, EMAIL_PASSWORD)
+            server.sendmail(EMAIL_USER, ADMIN_EMAIL, msg.as_string())
+        
+        print(f"✅ Alerta de error enviada exitosamente a {ADMIN_EMAIL}")
+    except Exception as e:
+        print(f"🔴 ERROR FATAL: No se pudo enviar la alerta al administrador. {e}")
+
+
+# ----------------------------------------------------------------------
 # --- FUNCIÓN: CARGAR DATOS DESDE EXCEL ---
+# ----------------------------------------------------------------------
 
 def load_students_from_excel(file_path):
     """Carga los datos de los alumnos desde un archivo Excel/CSV."""
     try:
-        # Intentar leer el archivo Excel (.xlsx)
         if file_path.endswith('.xlsx'):
             df = pd.read_excel(file_path)
-        # O intentar leer el archivo CSV
         elif file_path.endswith('.csv'):
             df = pd.read_csv(file_path)
         else:
-            print("Error: El archivo debe ser .xlsx o .csv")
+            error_msg = "Error: El archivo debe ser .xlsx o .csv"
+            print(error_msg)
+            send_admin_alert("FORMATO DE ARCHIVO INVÁLIDO", error_msg)
             return []
             
-        # 1. Limpiar y estandarizar nombres de columnas
         df.columns = df.columns.str.lower()
-        
-        # 2. Asegurarse de que las columnas críticas existan
         required_cols = ['nombre', 'email', 'vencimiento']
         if not all(col in df.columns for col in required_cols):
-            print(f"Error: El archivo Excel debe contener las columnas: {required_cols}")
+            error_msg = f"Error: El archivo Excel debe contener las columnas: {required_cols}. Columnas encontradas: {list(df.columns)}"
+            print(error_msg)
+            send_admin_alert("COLUMNAS FALTANTES EN EXCEL/CSV", error_msg)
             return []
 
         alumnos_list = []
         
-        # 3. Iterar sobre las filas del DataFrame y crear la estructura de datos
         for index, row in df.iterrows():
-            # Asumimos que la tarea siempre es la misma ('Entrega Final del Curso (Adulto Mayor)')
-            # y que la columna 'vencimiento' contiene la fecha límite.
             alumno_data = {
-                "id": index + 1, # ID autogenerado
+                "id": index + 1, 
                 "nombre": row['nombre'],
                 "email": row['email'],
                 "tareas_pendientes": [
                     {
                         "nombre": "Entrega Final del Curso (Adulto Mayor)",
-                        "vencimiento": str(row['vencimiento']).split(' ')[0], # Asegura formato 'YYYY-MM-DD' si viene con hora
+                        "vencimiento": str(row['vencimiento']).split(' ')[0],
                         "entregado": False
                     }
                 ]
@@ -64,19 +93,23 @@ def load_students_from_excel(file_path):
         return alumnos_list
         
     except FileNotFoundError:
-        print(f"Error: No se encontró el archivo {file_path}. Usando lista vacía.")
+        error_msg = f"Error: No se encontró el archivo {file_path}. El script no puede continuar."
+        print(error_msg)
+        send_admin_alert("ARCHIVO DE DATOS NO ENCONTRADO", error_msg)
         return []
     except Exception as e:
-        print(f"Error al procesar el archivo Excel: {e}")
+        error_msg = f"Error crítico al procesar el archivo Excel: {e}"
+        print(error_msg)
+        send_admin_alert("ERROR CRÍTICO EN LA LECTURA DE EXCEL/CSV", error_msg)
         return []
 
 
-
-# --- FUNCIÓN DE ENVÍO DE CORREO ÚNICA (sin cambios) ---
+# ----------------------------------------------------------------------
+# --- FUNCIÓN DE ENVÍO DE CORREO ÚNICA (Manejo de Errores de SMTP) ---
+# ----------------------------------------------------------------------
 
 def send_email_reminder(to_email, subject, body):
     """Envía un correo electrónico a través de SMTP."""
-    # ... (código send_email_reminder)
     try:
         msg = MIMEText(body, 'html')
         msg['Subject'] = subject
@@ -91,27 +124,33 @@ def send_email_reminder(to_email, subject, body):
         print(f"Correo enviado exitosamente a {to_email} desde {EMAIL_USER}")
         return True
     except Exception as e:
-        print(f"Error al enviar correo a {to_email}: {e}")
-        print("Verifica si el servidor SMTP, el puerto o las credenciales son correctas.")
+        error_msg = f"Error al enviar correo al alumno {to_email}: {e}"
+        print(error_msg)
+        
+        # Notificación al Administrador sobre el fallo
+        admin_body = f"FALLO DE ENVÍO SMTP:\n\n{error_msg}\n\nRevisa la configuración de EMAIL_USER y EMAIL_PASSWORD."
+        send_admin_alert("FALLO DE ENVÍO DE CORREO A ESTUDIANTE", admin_body)
+
         return False
 
 
-# --- LÓGICA PRINCIPAL: Decisión por Fecha (CON CAMBIOS EN ASUNTO Y CUERPO) ---
+# ----------------------------------------------------------------------
+# --- LÓGICA PRINCIPAL: Decisión por Fecha (CON NUEVO ENFOQUE) ---
+# ----------------------------------------------------------------------
 
 def main_reminder_logic():
     """Itera sobre la lista de alumnos CREADA DESDE EXCEL y genera recordatorios."""
     
-    # *** ESTE ES EL CAMBIO CLAVE: CARGAR LA LISTA DESDE EL ARCHIVO ***
     ALUMNOS_A_MONITOREAR = load_students_from_excel(EXCEL_FILE_PATH)
     
     if not ALUMNOS_A_MONITOREAR:
         print("No hay alumnos para monitorear. Finalizando proceso.")
         return
     
-    # ... (El resto de la lógica sigue igual)
-    print(f"Iniciando chequeo de recordatorios. Fecha actual: {datetime.now().strftime('%Y-%m-%d')}")
+    print(f"Iniciando chequeo de plazos. Fecha actual: {datetime.now().strftime('%Y-%m-%d')}")
     
     hoy = datetime.now().date()
+    data_warnings = [] 
 
     for alumno in ALUMNOS_A_MONITOREAR:
         nombre = alumno['nombre']
@@ -126,40 +165,40 @@ def main_reminder_logic():
             try:
                 fecha_vencimiento = datetime.strptime(tarea['vencimiento'], '%Y-%m-%d').date()
             except ValueError:
-                print(f"Advertencia: Formato de fecha inválido para {tarea['nombre']}")
+                warning_msg = f"Advertencia: Formato de fecha inválido para el alumno {nombre} en la tarea {tarea['nombre']} con valor '{tarea['vencimiento']}'. Saltando tarea."
+                print(warning_msg)
+                data_warnings.append(warning_msg) 
                 continue
 
-            # Lógica de urgencia (HOY o TARDE)
+            # Lógica de Plazo Límite
             estado = None
             if fecha_vencimiento == hoy:
-                estado = "**¡VENCE HOY!**"  # Más enfático
+                estado = "**¡PLAZO FINAL HOY!**"  # Énfasis en el plazo
             elif fecha_vencimiento < hoy:
-                # Modificado para ser más asertivo
-                estado = f"**VENCIDA** (Fecha límite: {tarea['vencimiento']})"
+                estado = f"**PLAZO EXPIRADO** (Fecha límite: {tarea['vencimiento']})" # Énfasis en que ya pasó
             
             if estado:
                 tareas_para_recordar.append((tarea['nombre'], estado))
             
         if tareas_para_recordar:
-            print(f"--> {nombre}: ¡Tiene {len(tareas_para_recordar)} tarea(s) pendientes/vencidas!")
+            print(f"--> {nombre}: ¡Tiene {len(tareas_para_recordar)} plazos críticos!")
             
-            # --- MODIFICACIÓN DEL CUERPO DEL CORREO ---
             lista_tareas_str = "\n".join([f"- {t[0]} ({t[1]})" for t in tareas_para_recordar])
 
-            # ASUNTO MODIFICADO: Directo y urgente.
-            subject = f"⚠️ ¡Cuidado con la Fecha Límite! Tarea(s) Pendiente(s) o Vencida(s)"
+            # ASUNTO MODIFICADO: Enfocado en la urgencia del plazo.
+            subject = f"🚨 URGENTE: Notificación sobre el Plazo Final del Curso"
 
-            # CUERPO DEL CORREO MODIFICADO: Enfocado en no pasarse de la fecha.
+            # CUERPO DEL CORREO MODIFICADO: Centrado en la fecha límite y no en la "tarea pendiente".
             email_body = f"""
             <html><body>
                 <p>Estimado(a) **{nombre}**:</p>
-                <p>Este es un **AVISO URGENTE** para asegurar que no te pases de la fecha límite o para informarte que ya ha pasado. **La entrega de tu trabajo final es crítica para la aprobación del curso.**</p>
-                <p>Asegúrate de enviar las siguientes tareas **INMEDIATAMENTE**: </p>
+                <p>Este es un **AVISO IMPORTANTE** para informarte sobre el estado de tu **Plazo Final del Curso**. La entrega de este trabajo es **CRÍTICA** para la aprobación.</p>
+                <p>El estado actual de tu fecha límite es el siguiente: </p>
                 <pre>{lista_tareas_str}</pre>
                 
                 <p>
-                    **Si la tarea vence hoy**, no pospongas la entrega para evitar penalizaciones. 
-                    **Si la tarea ya está vencida**, por favor contáctanos lo antes posible para ver cómo puedes regularizar tu situación.
+                    **Si tu plazo final es hoy**, por favor, no demores la entrega para evitar la expiración del plazo. 
+                    **Si el plazo ha expirado**, contáctanos de inmediato para regularizar tu situación.
                 </p>
                 
                 <p>**Si ya realizaste la entrega, por favor, ignora este mensaje.**</p>
@@ -169,11 +208,20 @@ def main_reminder_logic():
             """
             
             send_email_reminder(email, subject, email_body)
+    
+    # Reporte de advertencias de datos al final del proceso
+    if data_warnings:
+        admin_body = "Se detectaron los siguientes problemas de formato de datos en el archivo de alumnos:\n\n"
+        admin_body += "\n".join(data_warnings)
+        admin_body += "\n\nPor favor, revisa el formato 'YYYY-MM-DD' en el archivo Excel o CSV."
+        send_admin_alert("ADVERTENCIAS DE FORMATO DE DATOS EN EXCEL/CSV", admin_body)
+
             
     print("Proceso de recordatorios finalizado.")
 
+# ----------------------------------------------------------------------
 # --- PUNTO DE ENTRADA DEL SCRIPT ---
-
+# ----------------------------------------------------------------------
 
 if __name__ == "__main__":
     main_reminder_logic()
