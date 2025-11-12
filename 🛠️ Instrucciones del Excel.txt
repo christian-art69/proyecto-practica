@@ -1,0 +1,34 @@
+# -------------------------------------------------------------
+# 1. NOMBRE Y FORMATO DEL ARCHIVO
+# -------------------------------------------------------------
+
+# El archivo debe llamarse EXACTAMENTE: 
+# alumnos_tareas.xlsx 
+# O puede ser alumnos_tareas.csv
+
+# -------------------------------------------------------------
+# 2. ESTRUCTURA DE COLUMNAS (NO MODIFICAR ENCABEZADOS)
+# -------------------------------------------------------------
+
+# La primera fila (encabezados) debe contener estas tres columnas, sin errores de escritura:
+# A1: nombre
+# B1: email
+# C1: vencimiento
+
+# -------------------------------------------------------------
+# 3. FORMATO CRÍTICO DE LA FECHA DE VENCIMIENTO
+# -------------------------------------------------------------
+
+# La columna 'vencimiento' es la más importante. 
+# Debe seguir el formato estricto AÑO-MES-DÍA:
+# YYYY-MM-DD
+
+# EJEMPLO CORRECTO:
+# Para el 1 de Diciembre de 2025: 2025-12-01
+
+# -------------------------------------------------------------
+# 4. PASO FINAL: SUBIR CAMBIOS A GIT (CONSOLA)
+# -------------------------------------------------------------
+
+# Para que el script que se ejecuta en tu repositorio use la versión actualizada, 
+# debes subir el archivo modificado a la rama principal (main/master).
