@@ -4,9 +4,7 @@ import pandas as pd
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 
-# ----------------------------------------------------------------------
 # --- CONFIGURACIÓN DE ENVÍO Y VARIABLES DE ENTORNO ---
-# ----------------------------------------------------------------------
 
 SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
 SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
@@ -15,15 +13,11 @@ EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
 
 # --- CONFIGURACIÓN PARA REPORTES DE ERRORES ---
 ADMIN_EMAIL = os.getenv('ADMIN_EMAIL') 
-# ----------------------------------------------------------------------
 
 # Nombre del archivo de Excel
 EXCEL_FILE_PATH = 'alumnos_tareas.xlsx' 
 
-
-# ----------------------------------------------------------------------
 # --- FUNCIÓN DE ALERTA DE ADMINISTRADOR ---
-# ----------------------------------------------------------------------
 
 def send_admin_alert(subject, body):
     """Envía una notificación simple al administrador sobre un error crítico."""
@@ -45,11 +39,8 @@ def send_admin_alert(subject, body):
         print(f"✅ Alerta de error enviada exitosamente a {ADMIN_EMAIL}")
     except Exception as e:
         print(f"🔴 ERROR FATAL: No se pudo enviar la alerta al administrador. {e}")
-
-
-# ----------------------------------------------------------------------
+        
 # --- FUNCIÓN: CARGAR DATOS DESDE EXCEL ---
-# ----------------------------------------------------------------------
 
 def load_students_from_excel(file_path):
     """Carga los datos de los alumnos desde un archivo Excel/CSV."""
@@ -102,11 +93,8 @@ def load_students_from_excel(file_path):
         print(error_msg)
         send_admin_alert("ERROR CRÍTICO EN LA LECTURA DE EXCEL/CSV", error_msg)
         return []
-
-
-# ----------------------------------------------------------------------
+        
 # --- FUNCIÓN DE ENVÍO DE CORREO ÚNICA (Manejo de Errores de SMTP) ---
-# ----------------------------------------------------------------------
 
 def send_email_reminder(to_email, subject, body):
     """Envía un correo electrónico a través de SMTP."""
@@ -132,11 +120,8 @@ def send_email_reminder(to_email, subject, body):
         send_admin_alert("FALLO DE ENVÍO DE CORREO A ESTUDIANTE", admin_body)
 
         return False
-
-
-# ----------------------------------------------------------------------
+        
 # --- LÓGICA PRINCIPAL: Decisión por Fecha (CON NUEVO ENFOQUE) ---
-# ----------------------------------------------------------------------
 
 def main_reminder_logic():
     """Itera sobre la lista de alumnos CREADA DESDE EXCEL y genera recordatorios."""
@@ -179,44 +164,36 @@ def main_reminder_logic():
             
             if estado:
                 tareas_para_recordar.append((tarea['nombre'], estado))
-            
+                
         if tareas_para_recordar:
             print(f"--> {nombre}: ¡Tiene {len(tareas_para_recordar)} plazos críticos!")
             
             lista_tareas_str = "\n".join([f"- {t[0]} ({t[1]})" for t in tareas_para_recordar])
 
-            # ASUNTO MODIFICADO: Enfocado en la urgencia del plazo.
             subject = f"🚨 URGENTE: Notificación sobre el Plazo Final del Curso"
-
-            # CUERPO DEL CORREO MODIFICADO: Centrado en la fecha límite y no en la "tarea pendiente".
             email_body = f"""
             <html><body>
                 <p>Estimado(a) **{nombre}**:</p>
                 <p>Este es un **AVISO IMPORTANTE** para informarte sobre el estado de tu **Plazo Final del Curso**. La entrega de este trabajo es **CRÍTICA** para la aprobación.</p>
                 <p>El estado actual de tu fecha límite es el siguiente: </p>
                 <pre>{lista_tareas_str}</pre>
-                
                 <p>
                     **Si tu plazo final es hoy**, por favor, no demores la entrega para evitar la expiración del plazo. 
                     **Si el plazo ha expirado**, contáctanos de inmediato para regularizar tu situación.
                 </p>
-                
                 <p>**Si ya realizaste la entrega, por favor, ignora este mensaje.**</p>
-                
                 <p>Saludos y mucho éxito,<br>El equipo de {EMAIL_USER.split('@')[1]}</p>
             </body></html>
             """
-            
             send_email_reminder(email, subject, email_body)
-    
+
     # Reporte de advertencias de datos al final del proceso
     if data_warnings:
         admin_body = "Se detectaron los siguientes problemas de formato de datos en el archivo de alumnos:\n\n"
         admin_body += "\n".join(data_warnings)
         admin_body += "\n\nPor favor, revisa el formato 'YYYY-MM-DD' en el archivo Excel o CSV."
         send_admin_alert("ADVERTENCIAS DE FORMATO DE DATOS EN EXCEL/CSV", admin_body)
-
-            
+        
     print("Proceso de recordatorios finalizado.")
 
 # ----------------------------------------------------------------------
