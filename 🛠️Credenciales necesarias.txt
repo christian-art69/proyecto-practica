@@ -1,0 +1,21 @@
+# -------------------------------------------------------------
+# 1. CREDENCIALES OBLIGATORIAS DEL REMITENTE
+# -------------------------------------------------------------
+
+# EMAIL_USER: 
+#   Tu dirección de correo electrónico (el remitente de los recordatorios).
+#   Ejemplo: EMAIL_USER="tucorreo@dominio.com"
+
+# EMAIL_PASSWORD: 
+#   La contraseña de tu cuenta de correo. Si usas Gmail con verificación de 2 pasos, 
+#   DEBES usar una 'Contraseña de Aplicación', no tu contraseña principal.
+#   Ejemplo: EMAIL_PASSWORD="tupassworddeaplicacion" 
+
+# -------------------------------------------------------------
+# 2. CORREO DEL ADMINISTRADOR (PARA ALERTAS DE ERROR)
+# -------------------------------------------------------------
+
+# ADMIN_EMAIL: 
+#   La dirección a la que se enviarán las notificaciones de error críticas
+#   (como problemas de formato de fecha o fallos de conexión SMTP).
+#   Ejemplo: ADMIN_EMAIL="alertas.admin@dominio.com"
